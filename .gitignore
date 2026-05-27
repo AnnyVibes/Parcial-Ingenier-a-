@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Django
+backend/media/
+*.sqlite3
+backend/config/local_settings.py
+
+# Environment
+.env
+*.env.local
+
+# Node
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# QA reports (keep .gitkeep only)
+qa-dashboard/reports/*.json
+!qa-dashboard/reports/.gitkeep

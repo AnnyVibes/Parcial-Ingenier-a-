@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Dashboard — AML/KYC</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 28px 40px; }
+.header h1 { font-size: 24px; font-weight: 600; }
+.header p { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+.card { background: #fff; border-radius: 10px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
+.card .value { font-size: 32px; font-weight: 700; margin-top: 6px; }
+.charts { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px; }
+.chart-box { background: #fff; border-radius: 10px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.chart-box h3 { font-size: 14px; color: #555; margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+th { background: #f8f9fa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; padding: 14px 16px; text-align: left; }
+td { padding: 12px 16px; border-top: 1px solid #eee; font-size: 14px; }
+tr:hover { background: #fafbfc; }
+.badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+.badge-success { background: #d4edda; color: #155724; }
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #f8d7da; color: #721c24; }
+.footer { text-align: center; padding: 24px; font-size: 12px; color: #999; }
+@media (max-width: 768px) { .charts { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>QA Dashboard — AML/KYC</h1>
+    <p>Monitoreo de calidad de código • Análisis estático y seguridad</p>
+</div>
+
+<div class="container">
+
+<div class="cards">
+    <div class="card">
+        <div class="label">Total Issues</div>
+        <div class="value">18</div>
+    </div>
+    <div class="card">
+        <div class="label">Estado Actual</div>
+        <div class="value"><span class="badge badge-warning" style="font-size:20px">Atención</span></div>
+    </div>
+    <div class="card">
+        <div class="label">Última Revisión</div>
+        <div class="value" style="font-size:20px">2026-05-26</div>
+    </div>
+    <div class="card">
+        <div class="label">Críticos</div>
+        <div class="value" style="color:#dc3545">3</div>
+    </div>
+    <div class="card">
+        <div class="label">Medios</div>
+        <div class="value" style="color:#e67e22">8</div>
+    </div>
+    <div class="card">
+        <div class="label">Bajos</div>
+        <div class="value" style="color:#28a745">7</div>
+    </div>
+</div>
+
+<div class="charts">
+    <div class="chart-box">
+        <h3>Tendencia de Issues por Severidad</h3>
+        <canvas id="lineChart" height="220"></canvas>
+    </div>
+    <div class="chart-box">
+        <h3>Distribución Actual por Categoría</h3>
+        <canvas id="pieChart" height="220"></canvas>
+    </div>
+</div>
+
+<div class="chart-box" style="padding:0;overflow:hidden">
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Total</th>
+                <th>Críticos</th>
+                <th>Medios</th>
+                <th>Bajos</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            <tr>
+                <td>2026-05-26</td>
+                <td>18</td>
+                <td>3</td>
+                <td>8</td>
+                <td>7</td>
+                <td><span class="badge badge-warning">Atención</span></td>
+            </tr>
+            <tr>
+                <td>2026-05-25</td>
+                <td>26</td>
+                <td>7</td>
+                <td>12</td>
+                <td>7</td>
+                <td><span class="badge badge-danger">Crítico</span></td>
+            </tr>
+            <tr>
+                <td>2026-05-24</td>
+                <td>36</td>
+                <td>12</td>
+                <td>15</td>
+                <td>9</td>
+                <td><span class="badge badge-danger">Crítico</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</div>
+
+<div class="footer">
+    Última generación: 2026-05-27 06:01:49 &mdash; QA Dashboard AML/KYC
+</div>
+
+<script>
+const dates = ["2026-05-24", "2026-05-25", "2026-05-26"];
+const criticos = [12, 7, 3];
+const medios = [15, 12, 8];
+const bajos = [9, 7, 7];
+
+new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+        labels: dates,
+        datasets: [
+            { label: 'Críticos', data: criticos, borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.05)', tension: 0.3, fill: true, pointRadius: 4 },
+            { label: 'Medios', data: medios, borderColor: '#e67e22', backgroundColor: 'rgba(230,126,34,0.05)', tension: 0.3, fill: true, pointRadius: 4 },
+            { label: 'Bajos', data: bajos, borderColor: '#28a745', backgroundColor: 'rgba(40,167,69,0.05)', tension: 0.3, fill: true, pointRadius: 4 }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+const last = {"fecha": "2026-05-26", "total_issues": 18, "criticos": 3, "medios": 8, "bajos": 7, "sintaxis": 7, "complejidad": 6, "seguridad": 5, "estado": "atencion", "detalles": {"archivos": [{"ruta": "backend/src/auth/login.py", "tipo": "seguridad", "severidad": "critico", "linea": 15, "descripcion": "SQL injection: raw string interpolation in query"}, {"ruta": "backend/src/api/kyc_verify.py", "tipo": "seguridad", "severidad": "critico", "linea": 34, "descripcion": "Hardcoded API key in source code"}, {"ruta": "backend/src/models/user.py", "tipo": "complejidad", "severidad": "medio", "linea": 120, "descripcion": "Cyclomatic complexity 18 in validate_document"}, {"ruta": "backend/src/services/aml_check.py", "tipo": "complejidad", "severidad": "medio", "linea": 67, "descripcion": "Too many branches in risk scoring logic"}, {"ruta": "backend/src/utils/validators.py", "tipo": "sintaxis", "severidad": "medio", "linea": 33, "descripcion": "Inconsistent return statement (returns str or None)"}, {"ruta": "backend/src/utils/validators.py", "tipo": "complejidad", "severidad": "medio", "linea": 55, "descripcion": "Regex pattern too complex, consider splitting"}, {"ruta": "frontend-admin/src/components/KYCForm.vue", "tipo": "seguridad", "severidad": "critico", "linea": 76, "descripcion": "v-html with user-provided content (XSS)"}, {"ruta": "frontend-admin/src/views/Dashboard.vue", "tipo": "sintaxis", "severidad": "medio", "linea": 55, "descripcion": "Unused computed property: filteredList"}, {"ruta": "frontend-admin/src/store/index.js", "tipo": "sintaxis", "severidad": "medio", "linea": 88, "descripcion": "Mutation handler performs async operation"}, {"ruta": "frontend-admin/src/store/index.js", "tipo": "complejidad", "severidad": "bajo", "linea": 45, "descripcion": "Getter has side effect"}, {"ruta": "frontend-admin/src/utils/api.js", "tipo": "seguridad", "severidad": "medio", "linea": 22, "descripcion": "No timeout configured for HTTP requests"}, {"ruta": "frontend-admin/src/utils/api.js", "tipo": "sintaxis", "severidad": "bajo", "linea": 10, "descripcion": "Missing semicolon in axios interceptor"}, {"ruta": "backend/src/middleware/auth_middleware.py", "tipo": "complejidad", "severidad": "medio", "linea": 60, "descripcion": "Middleware has 8 responsibility areas"}, {"ruta": "frontend-admin/src/components/TransactionTable.vue", "tipo": "sintaxis", "severidad": "medio", "linea": 115, "descripcion": "Prop type mismatch: expected Array got Object"}, {"ruta": "backend/src/services/alert_service.py", "tipo": "complejidad", "severidad": "medio", "linea": 92, "descripcion": "Cyclomatic complexity 35 in alert_routing"}, {"ruta": "backend/src/services/alert_service.py", "tipo": "seguridad", "severidad": "medio", "linea": 50, "descripcion": "Alert data exposed in stack trace on error"}, {"ruta": "backend/src/services/alert_service.py", "tipo": "sintaxis", "severidad": "bajo", "linea": 15, "descripcion": "Logger variable shadows module-level logger"}, {"ruta": "frontend-admin/src/router/index.js", "tipo": "sintaxis", "severidad": "bajo", "linea": 5, "descripcion": "Duplicate route path '/settings'"}]}};
+new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: {
+        labels: ['Sintaxis', 'Complejidad', 'Seguridad'],
+        datasets: [{
+            data: [last.sintaxis || 0, last.complejidad || 0, last.seguridad || 0],
+            backgroundColor: ['#17a2b8', '#ffc107', '#dc3545'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+</script>
+
+</body>
+</html>
