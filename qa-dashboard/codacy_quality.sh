@@ -53,6 +53,7 @@ header "AML/KYC Code Quality Analyzer"
 
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend-admin"
+FRONTEND_PUBLIC_DIR="$PROJECT_DIR/frontend-public"
 TODAY=$(date +%Y-%m-%d)
 ISSUES=()
 TOTAL_CRITICOS=0
@@ -97,11 +98,14 @@ check_python_pylint() {
     if has_tool pylint; then
         info "Running pylint in $dir..."
         pylint "$dir" --output-format=text 2>/dev/null || true
+    elif has_tool flake8; then
+        info "Running flake8 in $dir..."
+        flake8 "$dir" --max-line-length=120 2>/dev/null || true
     elif has_tool pyflakes; then
         info "Running pyflakes in $dir..."
         pyflakes "$dir" 2>/dev/null || true
     else
-        warn "pylint/pyflakes not installed — skipping static analysis for $dir"
+        warn "pylint/flake8/pyflakes not installed — skipping static analysis for $dir"
         return 1
     fi
 }
@@ -146,16 +150,16 @@ check_js_security() {
     findings=$(grep -rn 'v-html\|dangerouslySetInnerHTML\|innerHTML\|eval(\|execScript' "$dir" --include='*.vue' --include='*.js' --include='*.ts' 2>/dev/null | head -20 || true)
     if [ -n "$findings" ]; then
         warn "Potential XSS patterns found:"
-        echo "$findings" | while IFS= read -r line; do
+        while IFS= read -r line; do
             warn "  $line"
-        done
+        done <<< "$findings"
     fi
-    echo "$findings" | while IFS=: read -r file line rest; do
+    while IFS=: read -r file line rest; do
         [ -z "$file" ] && continue
         ISSUES+=("{\"ruta\":\"$file\",\"tipo\":\"seguridad\",\"severidad\":\"critico\",\"linea\":$line,\"descripcion\":\"Potential XSS: ${rest:0:80}\"}")
         TOTAL_SEGURIDAD=$((TOTAL_SEGURIDAD + 1))
         TOTAL_CRITICOS=$((TOTAL_CRITICOS + 1))
-    done
+    done <<< "$findings"
 }
 
 check_python_security() {
@@ -174,19 +178,19 @@ except Exception:
 " 2>/dev/null || true
     else
         local findings
-        findings=$(grep -rn 'exec(\|eval(\|subprocess.call\|subprocess.Popen\|pickle.load\|sqlite3.execute.*+''"' "$dir" --include='*.py' 2>/dev/null | head -20 || true)
+        findings=$(grep -rn 'exec(\|eval(\|subprocess.call\|subprocess.Popen\|pickle.load\|sqlite3.execute.*+' "$dir" --include='*.py' 2>/dev/null | head -20 || true)
         if [ -n "$findings" ]; then
             warn "Potential security issues found (basic grep):"
-            echo "$findings" | while IFS= read -r line; do
+            while IFS= read -r line; do
                 warn "  $line"
-            done
+            done <<< "$findings"
         fi
-        echo "$findings" | while IFS=: read -r file line rest; do
+        while IFS=: read -r file line rest; do
             [ -z "$file" ] && continue
             ISSUES+=("{\"ruta\":\"$file\",\"tipo\":\"seguridad\",\"severidad\":\"critico\",\"linea\":$line,\"descripcion\":\"${rest:0:80}\"}")
             TOTAL_SEGURIDAD=$((TOTAL_SEGURIDAD + 1))
             TOTAL_CRITICOS=$((TOTAL_CRITICOS + 1))
-        done
+        done <<< "$findings"
         warn "bandit not installed — security check limited for $dir"
         return 1
     fi
@@ -245,12 +249,21 @@ else
 fi
 
 if [ -d "$FRONTEND_DIR" ]; then
-    header "Frontend Analysis ($FRONTEND_DIR)"
+    header "Frontend Admin Analysis ($FRONTEND_DIR)"
     check_js_vue_syntax "$FRONTEND_DIR" || true
     check_js_security "$FRONTEND_DIR" || true
     find_complex_files "$FRONTEND_DIR"
 else
-    warn "Frontend directory not found at $FRONTEND_DIR"
+    warn "Frontend-admin directory not found at $FRONTEND_DIR"
+fi
+
+if [ -d "$FRONTEND_PUBLIC_DIR" ]; then
+    header "Frontend Public Analysis ($FRONTEND_PUBLIC_DIR)"
+    check_js_vue_syntax "$FRONTEND_PUBLIC_DIR" || true
+    check_js_security "$FRONTEND_PUBLIC_DIR" || true
+    find_complex_files "$FRONTEND_PUBLIC_DIR"
+else
+    warn "Frontend-public directory not found at $FRONTEND_PUBLIC_DIR"
 fi
 
 if [ "$TOTAL_CRITICOS" -eq 0 ] && [ "$TOTAL_MEDIOS" -eq 0 ] && [ "$TOTAL_BAJOS" -eq 0 ] && [ ${#ISSUES[@]} -eq 0 ]; then
