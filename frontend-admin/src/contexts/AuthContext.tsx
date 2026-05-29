@@ -1,99 +1,95 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
-import api from "@/services/api";
+  REFRESH_STORAGE_KEY,
+  USER_STORAGE_KEY,
+  getStoredToken,
+  setStoredToken,
+} from '@/api/client'
+import type { Rol, Usuario } from '@/types'
 
-interface User {
-  id: number;
-  email: string;
-  nombre: string;
-  rol: "admin" | "analista" | "auditor" | "supervisor";
-  mfa_enabled: boolean;
+interface AuthContextValue {
+  user: Usuario | null
+  token: string | null
+  isAuthenticated: boolean
+  login: (token: string, refresh: string, user: Usuario) => void
+  logout: () => void
+  hasRole: (role: Rol | Rol[]) => boolean
 }
 
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ mfa_required: boolean; temp_token?: string }>;
-  verifyMFA: (tempToken: string, code: string) => Promise<void>;
-  logout: () => void;
-  hasRole: (roles: string[]) => boolean;
-}
+const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setIsLoading(false);
-      return;
+export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+  const [token, setToken] = useState<string | null>(() => getStoredToken())
+  const [user, setUser] = useState<Usuario | null>(() => {
+    try {
+      const raw = localStorage.getItem(USER_STORAGE_KEY)
+      return raw ? (JSON.parse(raw) as Usuario) : null
+    } catch {
+      return null
     }
-    api
-      .get<User>("/auth/me")
-      .then((res) => setUser(res.data))
-      .catch(() => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-      })
-      .finally(() => setIsLoading(false));
-  }, []);
+  })
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post("/auth/login", { email, password });
-
-    if (data.mfa_required) {
-      return { mfa_required: true, temp_token: data.temp_token };
+  const login = useCallback((newToken: string, refresh: string, u: Usuario) => {
+    setStoredToken(newToken)
+    try {
+      localStorage.setItem(REFRESH_STORAGE_KEY, refresh)
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(u))
+    } catch {
+      /* noop */
     }
-
-    localStorage.setItem("access_token", data.access);
-    localStorage.setItem("refresh_token", data.refresh);
-    setUser(data.user);
-    return { mfa_required: false };
-  }, []);
-
-  const verifyMFA = useCallback(async (tempToken: string, code: string) => {
-    const { data } = await api.post("/auth/mfa/verify", {
-      temp_token: tempToken,
-      code,
-    });
-    localStorage.setItem("access_token", data.access);
-    localStorage.setItem("refresh_token", data.refresh);
-    setUser(data.user);
-  }, []);
+    setToken(newToken)
+    setUser(u)
+  }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    setUser(null);
-    window.location.href = "/login";
-  }, []);
+    setStoredToken(null)
+    try {
+      localStorage.removeItem(REFRESH_STORAGE_KEY)
+      localStorage.removeItem(USER_STORAGE_KEY)
+    } catch {
+      /* noop */
+    }
+    setToken(null)
+    setUser(null)
+  }, [])
 
   const hasRole = useCallback(
-    (roles: string[]) => {
-      if (!user) return false;
-      return roles.includes(user.rol);
+    (role: Rol | Rol[]): boolean => {
+      if (!user) return false
+      if (Array.isArray(role)) return role.includes(user.rol)
+      return user.rol === role
     },
-    [user]
-  );
+    [user],
+  )
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, verifyMFA, logout, hasRole }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // Sincronizar entre pestañas
+  useEffect(() => {
+    function onStorage(e: StorageEvent): void {
+      if (e.key === USER_STORAGE_KEY) {
+        setUser(e.newValue ? (JSON.parse(e.newValue) as Usuario) : null)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      login,
+      logout,
+      hasRole,
+    }),
+    [user, token, login, logout, hasRole],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider')
+  return ctx
 }
