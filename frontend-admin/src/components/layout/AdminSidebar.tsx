@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   Folder,
+  KanbanSquare,
   ShieldAlert,
   BellRing,
   Users,
@@ -25,6 +26,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/expedientes', label: 'Expedientes', icon: Folder },
+  { to: '/admin/kanban', label: 'Tablero Kanban', icon: KanbanSquare },
   { to: '/admin/auditoria', label: 'Auditoría', icon: ShieldAlert },
   { to: '/admin/reportes', label: 'Reportes y Alertas', icon: BellRing },
   { to: '/admin/usuarios', label: 'Gestión de Usuarios', icon: Users, roles: ['ADMINISTRADOR'] },

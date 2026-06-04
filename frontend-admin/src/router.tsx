@@ -9,6 +9,7 @@ const DashboardPage = lazy(() => import('@/pages/admin/Dashboard'))
 const ExpedientesListPage = lazy(() => import('@/pages/admin/ExpedientesList'))
 const ExpedienteDetailPage = lazy(() => import('@/pages/admin/ExpedienteDetail'))
 const WorkflowPage = lazy(() => import('@/pages/admin/Workflow'))
+const KanbanBoardPage = lazy(() => import('@/pages/admin/KanbanBoard'))
 const ReportesPage = lazy(() => import('@/pages/admin/Reportes'))
 const AuditoriaPage = lazy(() => import('@/pages/admin/Auditoria'))
 const UsuariosPage = lazy(() => import('@/pages/admin/Usuarios'))
@@ -42,6 +43,7 @@ export function AppRouter(): JSX.Element {
           <Route path="expedientes" element={<ExpedientesListPage />} />
           <Route path="expedientes/:id" element={<ExpedienteDetailPage />} />
           <Route path="expedientes/:id/workflow" element={<WorkflowPage />} />
+          <Route path="kanban" element={<KanbanBoardPage />} />
           <Route path="reportes" element={<ReportesPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route
