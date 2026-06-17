@@ -4,5 +4,5 @@ from .models import Workflow
 
 @admin.register(Workflow)
 class WorkflowAdmin(admin.ModelAdmin):
-    list_display = ['expediente', 'paso_actual', 'estado', 'asignado_a', 'fecha_inicio']
-    list_filter = ['estado']
+    list_display = ['expediente', 'estado_anterior', 'estado_nuevo', 'ejecutado_por', 'fecha']
+    list_filter = ['estado_nuevo']

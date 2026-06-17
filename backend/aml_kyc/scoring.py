@@ -61,6 +61,21 @@ def calcular_score(cliente, expediente=None):
         score += FACTORES['alto_volumen']['peso']
         factores_activados.append(FACTORES['alto_volumen']['descripcion'])
 
+    # ponytail: estructura compleja = persona juridica (NIT). Sin campo dedicado,
+    # el tipo de documento es la senal disponible; agregar campo si se necesita granularidad.
+    if getattr(cliente, 'tipo_documento', '') == 'NIT':
+        score += FACTORES['estructura_compleja']['peso']
+        factores_activados.append(FACTORES['estructura_compleja']['descripcion'])
+
+    # ponytail: historial de sanciones = alertas previas serias del mismo cliente.
+    from alertas.models import Alerta
+    tiene_sanciones = Alerta.objects.filter(
+        cliente=cliente, tipo__in=['alto_riesgo', 'actividad_sospechosa']
+    ).exists()
+    if tiene_sanciones:
+        score += FACTORES['historial_sanciones']['peso']
+        factores_activados.append(FACTORES['historial_sanciones']['descripcion'])
+
     score = min(score, 100)
 
     if score <= 25:
