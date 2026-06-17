@@ -9,12 +9,14 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+import random
 from accounts.models import User
 from clients.models import Cliente
 from expedientes.models import Expediente
 from aml_kyc.models import EvaluacionRiesgo
 from alertas.models import Alerta
 from workflow.models import Workflow
+from auditoria.models import AuditoriaLog
 
 
 USUARIOS = [
@@ -138,4 +140,36 @@ class Command(BaseCommand):
             creados += 1
 
         self.stdout.write(self.style.SUCCESS(f'  {creados} expedientes con clientes, evaluaciones y alertas'))
+
+        # --- Logs de auditoria variados (ultimos 14 dias) ---
+        AuditoriaLog.objects.all().delete()
+        acciones = [
+            ('login', 'Usuario'), ('logout', 'Usuario'),
+            ('creacion', 'Expediente'), ('actualizacion', 'Expediente'),
+            ('consulta', 'Expediente'), ('eliminacion', 'Documento'),
+            ('actualizacion', 'EvaluacionRiesgo'), ('creacion', 'Alerta'),
+        ]
+        descripciones = {
+            'login': 'Inicio de sesión', 'logout': 'Cierre de sesión',
+            'creacion': 'Creó un registro', 'actualizacion': 'Actualizó un registro',
+            'consulta': 'Consultó un expediente', 'eliminacion': 'Eliminó un documento',
+        }
+        usuarios_lista = list(users.values())
+        logs = 0
+        for _ in range(60):
+            accion, modelo = random.choice(acciones)
+            user = random.choice(usuarios_lista)
+            dias = random.randint(0, 13)
+            log = AuditoriaLog.objects.create(
+                usuario=user, accion=accion, modelo=modelo,
+                objeto_id=str(random.randint(1, 10)),
+                detalle={'descripcion': descripciones.get(accion, accion)},
+                ip_address=f'190.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}',
+            )
+            # auto_now_add ignora la fecha pasada; la fijamos despues
+            AuditoriaLog.objects.filter(pk=log.pk).update(
+                fecha=ahora - timedelta(days=dias, hours=random.randint(0, 23))
+            )
+            logs += 1
+        self.stdout.write(self.style.SUCCESS(f'  {logs} registros de auditoría'))
         self.stdout.write(self.style.SUCCESS('Seed completado.'))

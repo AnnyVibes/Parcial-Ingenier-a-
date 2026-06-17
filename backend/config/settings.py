@@ -128,6 +128,9 @@ AUTH_USER_MODEL = 'accounts.User'
 # CORS
 CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = True
+# Header custom que usa el portal publico (frontend-public) en el formulario KYC.
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = (*default_headers, 'x-form-token')
 
 # DRF
 REST_FRAMEWORK = {

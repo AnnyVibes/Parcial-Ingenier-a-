@@ -17,6 +17,7 @@ from expedientes.models import Expediente
 from aml_kyc.models import EvaluacionRiesgo
 from alertas.models import Alerta
 from auditoria.models import AuditoriaLog
+from documentos.models import Documento
 from workflow.models import Workflow, TRANSICIONES_VALIDAS
 from aml_kyc.scoring import calcular_score
 
@@ -178,6 +179,11 @@ def expediente_estado(request, pk):
         expediente=exp, estado_anterior=anterior, estado_nuevo=nuevo_back,
         ejecutado_por=request.user, comentarios=request.data.get('observacion', ''),
     )
+    # Al resolver el expediente, cerrar las alertas abiertas del cliente.
+    if nuevo_back in ('aprobado', 'rechazado'):
+        Alerta.objects.filter(cliente=exp.cliente, estado='nueva').update(
+            estado='resuelta', fecha_resolucion=timezone.now()
+        )
     return Response(mappers.expediente_front(exp))
 
 
@@ -333,15 +339,25 @@ def formulario_public_info(request, token):
     })
 
 
+# Mapeo de campos doc_* del formulario publico a tipos del modelo Documento.
+_DOC_TIPO = {
+    'doc_cedula': 'cedula', 'doc_identidad': 'cedula', 'doc_ruc': 'rif_nit',
+    'doc_inscripcion': 'camara_comercio', 'doc_registro_publico': 'camara_comercio',
+    'doc_aviso_operacion': 'camara_comercio', 'doc_acta': 'acta_constitutiva',
+    'doc_estados_financieros': 'estados_financieros', 'doc_domicilio': 'otro',
+    'doc_poder_representante': 'contrato', 'doc_otros': 'otro',
+}
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def formulario_public_submit(request):
     token = request.headers.get('X-Form-Token', '')
     data = request.data or {}
     nombre = (
-        data.get('nombre_razon_social')
+        data.get('nombre_razon_social') or data.get('razon_social')
         or data.get('nombre_completo')
-        or data.get('razon_social')
+        or (f"{data.get('nombres', '')} {data.get('apellidos', '')}".strip())
         or 'Cliente sin nombre'
     )
     tipo = _tipo_desde_token(token)
@@ -350,19 +366,31 @@ def formulario_public_submit(request):
     n = Cliente.objects.count() + 1
     cliente = Cliente.objects.create(
         tipo_documento=tipo_doc,
-        numero_documento=str(data.get('numero_documento') or f'{tipo_doc}-PUB-{n}'),
+        numero_documento=str(data.get('numero_documento') or data.get('ruc') or f'{tipo_doc}-PUB-{n}'),
         nombre_completo=nombre,
         email=data.get('email') or f'pub{n}@ejemplo.test',
         telefono=str(data.get('telefono') or ''),
-        nacionalidad=data.get('nacionalidad') or 'PA',
-        occupation=data.get('occupation') or '',
-        income_range=data.get('income_range') or '',
+        direccion=data.get('direccion') or data.get('domicilio') or '',
+        nacionalidad=data.get('nacionalidad') or data.get('pais') or 'PA',
+        occupation=data.get('occupation') or data.get('actividad_economica') or '',
+        income_range=data.get('income_range') or data.get('ingresos_mensuales') or '',
     )
     codigo = f'EXP-2026-{1000 + Expediente.objects.count() + 1:04d}'
     exp = Expediente.objects.create(
         cliente=cliente, codigo=codigo, estado='pendiente', nivel_riesgo='bajo',
+        datos_kyc=data,
     )
-    # Evaluacion inicial automatica
+
+    # Crear un Documento por cada doc_* presente (el front manda metadata, no binario).
+    for campo, valor in data.items():
+        if campo.startswith('doc_') and isinstance(valor, dict) and valor.get('nombre'):
+            Documento.objects.create(
+                cliente=cliente, expediente=exp,
+                tipo=_DOC_TIPO.get(campo, 'otro'),
+                nombre_original=valor.get('nombre', ''),
+                tamano_bytes=int(valor.get('tamano') or 0),
+            )
+
     resultado = calcular_score(cliente, exp)
     EvaluacionRiesgo.objects.create(
         cliente=cliente, expediente=exp, score=resultado['score'],
@@ -370,6 +398,12 @@ def formulario_public_submit(request):
     )
     exp.nivel_riesgo = resultado['nivel']
     exp.save(update_fields=['nivel_riesgo'])
+
+    if resultado['nivel'] in ('alto', 'critico'):
+        Alerta.objects.create(
+            cliente=cliente, tipo='alto_riesgo', estado='nueva', nivel_severidad='alta',
+            descripcion=f'{nombre} ingresó con score {resultado["score"]}/100. Requiere revisión.',
+        )
 
     return Response({'ok': True, 'expediente_numero': codigo}, status=status.HTTP_201_CREATED)
 
@@ -391,22 +425,104 @@ def auditoria_log(request):
     return Response({'ok': True})
 
 
+def _filtrar_auditoria(qs, request):
+    usuario = request.query_params.get('usuario')
+    if usuario:
+        qs = qs.filter(usuario_id=usuario)
+    accion = request.query_params.get('accion')
+    if accion:
+        qs = qs.filter(accion=accion)
+    desde = request.query_params.get('desde')
+    if desde:
+        qs = qs.filter(fecha__date__gte=desde)
+    hasta = request.query_params.get('hasta')
+    if hasta:
+        qs = qs.filter(fecha__date__lte=hasta)
+    search = request.query_params.get('search')
+    if search:
+        qs = qs.filter(
+            Q(modelo__icontains=search)
+            | Q(usuario__first_name__icontains=search)
+            | Q(usuario__last_name__icontains=search)
+            | Q(usuario__username__icontains=search)
+        )
+    return qs
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def auditoria_logs(request):
-    logs = AuditoriaLog.objects.select_related('usuario').all()
+    logs = _filtrar_auditoria(AuditoriaLog.objects.select_related('usuario'), request)
     items = [
         {
             'id': log.id,
             'accion': (log.detalle or {}).get('descripcion') or log.get_accion_display(),
+            'categoria': log.get_accion_display(),
             'usuario': log.usuario.get_full_name() if log.usuario else 'Sistema',
             'fecha': log.fecha.isoformat(),
+            'modelo': log.modelo,
             'expediente_id': int(log.objeto_id) if log.objeto_id.isdigit() else None,
+            'ip': log.ip_address or '—',
             'detalles': log.detalle,
         }
         for log in logs
     ]
     return Response(_paginar(request, items))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def auditoria_stats(request):
+    from django.db.models import Count
+    from django.db.models.functions import TruncDate
+
+    qs = _filtrar_auditoria(AuditoriaLog.objects.select_related('usuario'), request)
+    display = dict(AuditoriaLog.ACCIONES)
+    hoy = timezone.now().date()
+
+    total = qs.count()
+    eventos_hoy = qs.filter(fecha__date=hoy).count()
+    usuarios_activos = qs.exclude(usuario__isnull=True).values('usuario').distinct().count()
+
+    por_accion = [
+        {'accion': display.get(r['accion'], r['accion']), 'count': r['count']}
+        for r in qs.values('accion').annotate(count=Count('id')).order_by('-count')
+    ]
+    accion_top = por_accion[0]['accion'] if por_accion else '—'
+
+    por_usuario = [
+        {
+            'usuario': (f"{r['usuario__first_name']} {r['usuario__last_name']}".strip()
+                        or r['usuario__username'] or 'Sistema'),
+            'count': r['count'],
+        }
+        for r in qs.values('usuario__first_name', 'usuario__last_name', 'usuario__username')
+                   .annotate(count=Count('id')).order_by('-count')[:6]
+    ]
+
+    # Serie de los ultimos 14 dias (rellena los dias sin eventos con 0)
+    desde14 = hoy - timezone.timedelta(days=13)
+    counts = {
+        r['d'].isoformat(): r['count']
+        for r in qs.filter(fecha__date__gte=desde14)
+                   .annotate(d=TruncDate('fecha')).values('d')
+                   .annotate(count=Count('id'))
+    }
+    por_dia = [
+        {'dia': (hoy - timezone.timedelta(days=i)).strftime('%d/%m'),
+         'count': counts.get((hoy - timezone.timedelta(days=i)).isoformat(), 0)}
+        for i in range(13, -1, -1)
+    ]
+
+    return Response({
+        'total_eventos': total,
+        'eventos_hoy': eventos_hoy,
+        'usuarios_activos': usuarios_activos,
+        'accion_mas_comun': accion_top,
+        'por_accion': por_accion,
+        'por_usuario': por_usuario,
+        'por_dia': por_dia,
+    })
 
 
 # ──────────────────── USUARIOS ────────────────────

@@ -7,7 +7,7 @@ from simple_history.models import HistoricalRecords
 TRANSICIONES_VALIDAS = {
     'borrador':    ['pendiente'],
     'pendiente':   ['en_revision', 'rechazado'],
-    'en_revision': ['aprobado', 'rechazado'],
+    'en_revision': ['aprobado', 'rechazado', 'pendiente'],  # pendiente = solicitar info adicional
     'aprobado':    ['vencido'],
     'rechazado':   ['borrador'],
     'vencido':     ['pendiente'],
@@ -20,6 +20,7 @@ ROLES_POR_TRANSICION = {
     ('pendiente', 'rechazado'):     ['admin', 'oficial'],
     ('en_revision', 'aprobado'):    ['admin', 'oficial'],
     ('en_revision', 'rechazado'):   ['admin', 'oficial'],
+    ('en_revision', 'pendiente'):   ['admin', 'oficial', 'analista'],
     ('aprobado', 'vencido'):        ['admin'],
     ('rechazado', 'borrador'):      ['admin', 'oficial', 'analista'],
     ('vencido', 'pendiente'):       ['admin', 'oficial', 'analista'],

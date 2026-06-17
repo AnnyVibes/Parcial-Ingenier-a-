@@ -28,6 +28,7 @@ urlpatterns = [
     # Auditoria
     path('auditoria/log/', views.auditoria_log),
     path('auditoria/logs/', views.auditoria_logs),
+    path('auditoria/stats/', views.auditoria_stats),
 
     # Usuarios
     path('usuarios/', views.usuarios_list),

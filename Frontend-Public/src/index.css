@@ -52,3 +52,37 @@
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.5); }
+
+/* --- Animaciones del formulario KYC --- */
+@keyframes kyc-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.kyc-step-anim { animation: kyc-slide-in 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes kyc-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  60%  { transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.kyc-pop { animation: kyc-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+@keyframes kyc-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+.kyc-check path {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: kyc-check-draw 0.5s ease-out 0.25s forwards;
+}
+
+@keyframes kyc-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kyc-fade-up { animation: kyc-fade-up 0.4s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kyc-step-anim, .kyc-pop, .kyc-check path, .kyc-fade-up { animation: none; }
+  .kyc-check path { stroke-dashoffset: 0; }
+}

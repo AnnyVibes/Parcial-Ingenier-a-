@@ -705,11 +705,13 @@ export default function FormularioKYCPage(): JSX.Element {
             <WizardProgress current={stepIndex} total={totalSteps} labels={labels} />
 
             <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
-              <StepBody
-                stepKey={getStepKey(stepIndex)}
-                methods={methods}
-                tipoSugerido={tokenInfo?.tipo}
-              />
+              <div key={stepIndex} className="kyc-step-anim">
+                <StepBody
+                  stepKey={getStepKey(stepIndex)}
+                  methods={methods}
+                  tipoSugerido={tokenInfo?.tipo}
+                />
+              </div>
 
               {formState.errors.root?.message && (
                 <p className="text-sm text-red-600">{formState.errors.root.message}</p>

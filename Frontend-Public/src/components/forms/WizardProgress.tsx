@@ -18,7 +18,7 @@ export function WizardProgress({ current, total, labels }: Props): JSX.Element {
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <div
-          className="h-full bg-primary transition-all"
+          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>

@@ -38,8 +38,11 @@ export interface AuditPayload {
 export interface AuditLog {
   id: number
   accion: string
+  categoria?: string
   usuario: string
   fecha: string
+  modelo?: string
+  ip?: string
   expediente_id?: number | null
   detalles?: Record<string, unknown>
 }

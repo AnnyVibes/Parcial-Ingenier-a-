@@ -33,6 +33,7 @@ class Expediente(models.Model):
     fecha_vencimiento = models.DateField(null=True, blank=True)
     notas = models.TextField(blank=True)
     motivo_rechazo = models.TextField(blank=True)
+    datos_kyc = models.JSONField(default=dict, blank=True)  # payload completo del formulario publico
     history = HistoricalRecords()
 
     class Meta:

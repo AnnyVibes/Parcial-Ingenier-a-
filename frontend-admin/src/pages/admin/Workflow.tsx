@@ -166,11 +166,38 @@ export default function WorkflowPage(): JSX.Element {
               </Button>
             </div>
           )}
-          {!puedeAprobar && (
+          {e.estado === 'APROBADO' && (
+            <div className="flex items-start gap-2 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-900 dark:bg-green-900/20 dark:text-green-200">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+              <p>
+                Este expediente está <strong>aprobado</strong>. El flujo de revisión está
+                completo — no hay acciones pendientes.
+              </p>
+            </div>
+          )}
+          {e.estado === 'RECHAZADO' && (
+            <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-900/20 dark:text-red-200">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p>
+                Este expediente fue <strong>rechazado</strong>. Volvé al detalle para revisar
+                el motivo o reabrirlo desde Pendiente.
+              </p>
+            </div>
+          )}
+          {!puedeAprobar && e.estado !== 'APROBADO' && e.estado !== 'RECHAZADO' && (
             <p className="text-sm text-muted-foreground">
               Tu rol ({user?.rol}) no permite ejecutar acciones de workflow en este estado.
             </p>
           )}
+          {puedeAprobar &&
+            e.estado !== 'PENDIENTE' &&
+            e.estado !== 'EN_REVISION' &&
+            e.estado !== 'APROBADO' &&
+            e.estado !== 'RECHAZADO' && (
+              <p className="text-sm text-muted-foreground">
+                No hay acciones disponibles para el estado actual.
+              </p>
+            )}
         </CardContent>
       </Card>
 
@@ -236,7 +263,7 @@ export default function WorkflowPage(): JSX.Element {
             <Button variant="outline" onClick={() => setModal(null)} disabled={cambiarEstadoMut.isPending}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={() => handleConfirm('PENDIENTE', true)} disabled={cambiarEstadoMut.isPending}>
+            <Button variant="destructive" onClick={() => handleConfirm('RECHAZADO', true)} disabled={cambiarEstadoMut.isPending}>
               Rechazar
             </Button>
           </>
