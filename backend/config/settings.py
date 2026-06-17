@@ -59,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
+    'auditoria.middleware.AuditoriaMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -149,6 +150,19 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'America/Bogota'
+
+CELERY_BEAT_SCHEDULE = {
+    'verificar-expedientes-por-vencer': {
+        'task': 'expedientes.tasks.verificar_expedientes_por_vencer',
+        'schedule': 86400,  # cada 24 horas
+    },
+    'marcar-expedientes-vencidos': {
+        'task': 'expedientes.tasks.marcar_expedientes_vencidos',
+        'schedule': 86400,  # cada 24 horas
+    },
+}
+
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@amlkyc.com')
 
 # Spectacular
 SPECTACULAR_SETTINGS = {
