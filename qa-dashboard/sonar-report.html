@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SonarQube Report — AML/KYC</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 28px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.header h1 { font-size: 22px; font-weight: 600; }
+.header p { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.qg-badge { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.qg-success { background: rgba(40,167,69,0.2); color: #5cde7a; border: 1px solid rgba(40,167,69,0.4); }
+.qg-danger { background: rgba(220,53,69,0.2); color: #ff6b7a; border: 1px solid rgba(220,53,69,0.4); }
+.container { max-width: 1320px; margin: 0 auto; padding: 30px 20px; }
+.section-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; padding-left: 2px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.card { background: #fff; border-radius: 12px; padding: 18px 20px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border-top: 3px solid #e0e0e0; position: relative; }
+.card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #aaa; font-weight: 600; }
+.card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.card-ncloc { border-top-color: #6c757d; }
+.card-bugs { border-top-color: #dc3545; }
+.card-vulns { border-top-color: #e67e22; }
+.card-smells { border-top-color: #e6a817; }
+.card-coverage { border-top-color: #28a745; }
+.card-duplications { border-top-color: #17a2b8; }
+.card-sec { border-top-color: #dc3545; }
+.card-rel { border-top-color: #e67e22; }
+.card-sqale { border-top-color: #28a745; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+.chart-box { background: #fff; border-radius: 12px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.chart-box h3 { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; }
+.table-box { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 28px; }
+table { width: 100%; border-collapse: collapse; }
+th { background: #f8f9fa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; padding: 12px 16px; text-align: left; font-weight: 600; border-bottom: 1px solid #eee; }
+td { padding: 10px 16px; border-top: 1px solid #f2f2f2; font-size: 13px; vertical-align: top; }
+tr:hover td { background: #fafbfc; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-success { background: #d4f4dd; color: #0a5c27; }
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #fde8ea; color: #9b1c2a; }
+.badge-major { background: #fef7e0; color: #8a6d02; }
+.badge-info { background: #d6edf5; color: #0a5a75; }
+.badge-secondary { background: #e9ecef; color: #495057; }
+.file-cell { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #444; }
+.line-cell { font-family: 'SFMono-Regular', Consolas, monospace; color: #aaa; font-size: 12px; text-align: center; }
+.desc-cell { color: #555; max-width: 350px; font-size: 12px; }
+.path-cell { font-size: 11px; color: #999; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty-cell { text-align: center; color: #ccc; padding: 28px; font-size: 13px; }
+.footer { text-align: center; padding: 28px; font-size: 12px; color: #ccc; }
+.rating-badge { display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center; border-radius: 50%; font-weight: 700; font-size: 14px; color: #fff; }
+.rating-A { background: #28a745; }
+.rating-B { background: #e6a817; }
+.rating-C { background: #e67e22; }
+.rating-D { background: #dc3545; }
+.rating-E { background: #6c1f1f; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.summary-item { background: #fff; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: flex; justify-content: space-between; align-items: center; }
+.summary-item .label { font-size: 12px; color: #888; }
+.summary-item .value { font-size: 20px; font-weight: 700; }
+@media (max-width: 768px) { .charts { grid-template-columns: 1fr; } .header { padding: 20px; } .desc-cell { max-width: 140px; } .path-cell { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>SonarQube Report — AML/KYC</h1>
+        <p>parcial-ingenieria &bull; Generado el 2026-06-28 20:22:45</p>
+    </div>
+    <div class="header-right">
+        <span class="qg-badge qg-success">Quality Gate: Pasó</span>
+    </div>
+</div>
+
+<div class="container">
+
+<p class="section-title">Métricas del proyecto (8336 líneas de código)</p>
+<div class="cards">
+    <div class="card card-bugs">
+        <div class="label">Bugs</div>
+        <div class="value" style="color:#dc3545">2</div>
+    </div>
+    <div class="card card-vulns">
+        <div class="label">Vulnerabilidades</div>
+        <div class="value" style="color:#e67e22">7</div>
+    </div>
+    <div class="card card-smells">
+        <div class="label">Code Smells</div>
+        <div class="value" style="color:#e6a817">86</div>
+    </div>
+    <div class="card card-coverage">
+        <div class="label">Cobertura</div>
+        <div class="value" style="color:#28a745">0.0%</div>
+    </div>
+    <div class="card card-duplications">
+        <div class="label">Duplicación</div>
+        <div class="value" style="color:#17a2b8">4.7%</div>
+    </div>
+</div>
+
+<p class="section-title">Ratings</p>
+<div class="cards">
+    <div class="card card-sec">
+        <div class="label">Seguridad</div>
+        <div class="value"><span class="rating-badge rating-C">C</span></div>
+    </div>
+    <div class="card card-rel">
+        <div class="label">Confiabilidad</div>
+        <div class="value"><span class="rating-badge rating-B">B</span></div>
+    </div>
+    <div class="card card-sqale">
+        <div class="label">Mantenibilidad</div>
+        <div class="value"><span class="rating-badge rating-A">A</span></div>
+    </div>
+</div>
+
+<div class="charts">
+    <div class="chart-box">
+        <h3>Distribución por Severidad</h3>
+        <div style="position:relative;height:240px"><canvas id="severityChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+        <h3>Distribución por Tipo</h3>
+        <div style="position:relative;height:240px"><canvas id="typeChart"></canvas></div>
+    </div>
+</div>
+
+<p class="section-title">Security Hotspots (10)</p>
+<div class="table-box" style="margin-bottom:28px">
+    <table>
+        <thead>
+            <tr>
+                <th>Archivo</th>
+                <th>Categoría</th>
+                <th style="text-align:center">Probabilidad</th>
+                <th style="text-align:center">Línea</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/lib/validators.ts">validators.ts</td>
+                <td>Dos</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">15</td>
+                <td class="desc-cell">Asegúrese de que la regex usada aquí, vulnerable a tiempo de ejecución super-lineal por backtracking, no pueda causar denegación de servicio.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/lib/validators.ts">validators.ts</td>
+                <td>Dos</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">15</td>
+                <td class="desc-cell">Asegúrese de que la regex usada aquí, vulnerable a tiempo de ejecución super-lineal por backtracking, no pueda causar denegación de servicio.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/api/mock/handlers/formularios.ts">formularios.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">5</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/api/mock/handlers/formularios.ts">formularios.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">9</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/handlers/expedientes.ts">expedientes.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">125</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">108</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">109</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">133</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">146</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/utils.ts">utils.ts</td>
+                <td>Weak Cryptography</td>
+                <td class="line-cell">MEDIUM</td>
+                <td class="line-cell">4</td>
+                <td class="desc-cell">Asegúrese de que usar este generador pseudoaleatorio sea seguro aquí.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<p class="section-title">Issues detectados (95)</p>
+<div class="table-box">
+    <table>
+        <thead>
+            <tr>
+                <th>Archivo</th>
+                <th>Tipo</th>
+                <th>Severidad</th>
+                <th style="text-align:center">Línea</th>
+                <th>Descripción</th>
+                <th>Ruta</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/KanbanBoard.tsx">KanbanBoard.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">12</td>
+                <td class="desc-cell">Elimine este import no utilizado de 'EstadoBadge'.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/KanbanBoard.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/KanbanBoard.tsx">KanbanBoard.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">151</td>
+                <td class="desc-cell">Evite elementos interactivos no nativos. Si no es posible usar HTML nativo, agregue un rol apropiado y soporte para tabulación, mouse, teclado y táctil.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/KanbanBoard.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/KanbanBoard.tsx">KanbanBoard.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">172</td>
+                <td class="desc-cell">Evite elementos interactivos no nativos. Si no es posible usar HTML nativo, agregue un rol apropiado y soporte para tabulación, mouse, teclado y táctil.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/KanbanBoard.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/api/client.ts">client.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-warning">Critical</span></td>
+                <td class="line-cell">25</td>
+                <td class="desc-cell">Refactorice esta función para reducir su Complejidad Cognitiva de 17 a 15.</td>
+                <td class="path-cell">Frontend-Public/src/api/client.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/forms/FileDropzone.tsx">FileDropzone.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">15</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/components/forms/FileDropzone.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/forms/SignatureCanvas.tsx">SignatureCanvas.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">9</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/components/forms/SignatureCanvas.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/forms/WizardProgress.tsx">WizardProgress.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">9</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/components/forms/WizardProgress.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/forms/WizardProgress.tsx">WizardProgress.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">19</td>
+                <td class="desc-cell">Utilice <progress> en lugar del rol "progressbar" para asegurar accesibilidad.</td>
+                <td class="path-cell">Frontend-Public/src/components/forms/WizardProgress.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/forms/WizardProgress.tsx">WizardProgress.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">33</td>
+                <td class="desc-cell">Extraiga esta operación ternaria anidada a una declaración independiente.</td>
+                <td class="path-cell">Frontend-Public/src/components/forms/WizardProgress.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/ui/alert.tsx">alert.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">34</td>
+                <td class="desc-cell">Los encabezados deben tener contenido accesible por lector de pantalla.</td>
+                <td class="path-cell">Frontend-Public/src/components/ui/alert.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/components/ui/card.tsx">card.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">24</td>
+                <td class="desc-cell">Los encabezados deben tener contenido accesible por lector de pantalla.</td>
+                <td class="path-cell">Frontend-Public/src/components/ui/card.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/lib/validators.ts">validators.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">29</td>
+                <td class="desc-cell">Prefiera `Number.parseInt` en lugar de `parseInt`.</td>
+                <td class="path-cell">Frontend-Public/src/lib/validators.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/lib/validators.ts">validators.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">34</td>
+                <td class="desc-cell">Prefiera `Number.parseInt` en lugar de `parseInt`.</td>
+                <td class="path-cell">Frontend-Public/src/lib/validators.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/Confirmacion.tsx">Confirmacion.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">16</td>
+                <td class="desc-cell">Mueva la función 'handlePrint' al ámbito superior.</td>
+                <td class="path-cell">Frontend-Public/src/pages/Confirmacion.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/Confirmacion.tsx">Confirmacion.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">17</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">Frontend-Public/src/pages/Confirmacion.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">581</td>
+                <td class="desc-cell">Esta aserción es innecesaria, el receptor ya acepta el tipo original.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">585</td>
+                <td class="desc-cell">Esta aserción es innecesaria, el receptor ya acepta el tipo original.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">753</td>
+                <td class="desc-cell">Mueva esta definición de componente fuera del componente padre y pase datos como props.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">753</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-warning">Critical</span></td>
+                <td class="line-cell">762</td>
+                <td class="desc-cell">Elimine este uso del operador "void".</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">798</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">802</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">826</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">891</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">954</td>
+                <td class="desc-cell">Extraiga esta operación ternaria anidada a una declaración independiente.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">983</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1023</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1060</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1081</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1133</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1237</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1271</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1335</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1364</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1451</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1491</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="Frontend-Public/src/pages/FormularioKYC.tsx">FormularioKYC.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">1533</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">Frontend-Public/src/pages/FormularioKYC.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/client.ts">client.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">46</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/api/client.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/client.ts">client.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">51</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/api/client.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/client.ts">client.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-warning">Critical</span></td>
+                <td class="line-cell">58</td>
+                <td class="desc-cell">Refactorice esta función para reducir su Complejidad Cognitiva de 20 a 15.</td>
+                <td class="path-cell">frontend-admin/src/api/client.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/data/alertas.ts">alertas.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-warning">Critical</span></td>
+                <td class="line-cell">5</td>
+                <td class="desc-cell">Refactorice esta función para reducir su Complejidad Cognitiva de 18 a 15.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/data/alertas.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/data/users.ts">users.ts</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">28</td>
+                <td class="desc-cell">Revise esta posible contraseña hardcodeada.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/data/users.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/data/users.ts">users.ts</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">50</td>
+                <td class="desc-cell">Revise esta posible contraseña hardcodeada.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/data/users.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/data/users.ts">users.ts</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">72</td>
+                <td class="desc-cell">Revise esta posible contraseña hardcodeada.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/data/users.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/handlers/alertas.ts">alertas.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">6</td>
+                <td class="desc-cell">`TIPOS_VALIDOS` debería ser un `Set`, use `TIPOS_VALIDOS.has()` para verificar existencia.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/handlers/alertas.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/handlers/auth.ts">auth.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">20</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/handlers/auth.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/handlers/auth.ts">auth.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">82</td>
+                <td class="desc-cell">El objeto vacío es inútil.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/handlers/auth.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/handlers/usuarios.ts">usuarios.ts</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">42</td>
+                <td class="desc-cell">Revise esta posible contraseña hardcodeada.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/handlers/usuarios.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">149</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/store.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">149</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/store.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/store.ts">store.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">149</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/api/mock/store.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/api/mock/utils.ts">utils.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">35</td>
+                <td class="desc-cell">'v' usará formato de stringificación por defecto ('[object Object]').</td>
+                <td class="path-cell">frontend-admin/src/api/mock/utils.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/PrivateRoute.tsx">PrivateRoute.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">11</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/PrivateRoute.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/admin/Badges.tsx">Badges.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">20</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/admin/Badges.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/admin/Badges.tsx">Badges.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">30</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/admin/Badges.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/admin/DemoCredentials.tsx">DemoCredentials.tsx</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">16</td>
+                <td class="desc-cell">Revise esta posible contraseña hardcodeada.</td>
+                <td class="path-cell">frontend-admin/src/components/admin/DemoCredentials.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/admin/DemoCredentials.tsx">DemoCredentials.tsx</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">21</td>
+                <td class="desc-cell">Revise esta posible contraseña hardcodeada.</td>
+                <td class="path-cell">frontend-admin/src/components/admin/DemoCredentials.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/layout/AdminHeader.tsx">AdminHeader.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">54</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/layout/AdminHeader.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/layout/AdminHeader.tsx">AdminHeader.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">156</td>
+                <td class="desc-cell">Evite elementos interactivos no nativos. Si no es posible usar HTML nativo, agregue un rol apropiado y soporte para tabulación, mouse, teclado y táctil.</td>
+                <td class="path-cell">frontend-admin/src/components/layout/AdminHeader.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/layout/AdminSidebar.tsx">AdminSidebar.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">40</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/layout/AdminSidebar.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/avatar.tsx">avatar.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">8</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/avatar.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/card.tsx">card.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">24</td>
+                <td class="desc-cell">Los encabezados deben tener contenido accesible por lector de pantalla.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/card.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/dialog.tsx">dialog.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">16</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/dialog.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/dialog.tsx">dialog.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">29</td>
+                <td class="desc-cell">Use <dialog> instead of the "dialog" role to ensure accessibility across all devices.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/dialog.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/dialog.tsx">dialog.tsx</td>
+                <td><span class="badge badge-danger">Bug</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">29</td>
+                <td class="desc-cell">Elementos visibles no interactivos con click deben tener un listener de teclado.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/dialog.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/dialog.tsx">dialog.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">29</td>
+                <td class="desc-cell">Elementos no interactivos no deberían tener listeners de mouse o teclado.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/dialog.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/dialog.tsx">dialog.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">35</td>
+                <td class="desc-cell">Evite elementos interactivos no nativos. Si no es posible usar HTML nativo, agregue un rol apropiado y soporte para tabulación, mouse, teclado y táctil.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/dialog.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/components/ui/dialog.tsx">dialog.tsx</td>
+                <td><span class="badge badge-danger">Bug</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">35</td>
+                <td class="desc-cell">Elementos visibles no interactivos con click deben tener un listener de teclado.</td>
+                <td class="path-cell">frontend-admin/src/components/ui/dialog.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/AuthContext.tsx">AuthContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">21</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/contexts/AuthContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/AuthContext.tsx">AuthContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">72</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/contexts/AuthContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/AuthContext.tsx">AuthContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">73</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/contexts/AuthContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/ThemeContext.tsx">ThemeContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">14</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/contexts/ThemeContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/ThemeContext.tsx">ThemeContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">15</td>
+                <td class="desc-cell">La llamada a useState no está desestructurada en par valor + setter</td>
+                <td class="path-cell">frontend-admin/src/contexts/ThemeContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/ThemeContext.tsx">ThemeContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">22</td>
+                <td class="desc-cell">Prefiera `globalThis` en lugar de `window`.</td>
+                <td class="path-cell">frontend-admin/src/contexts/ThemeContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/contexts/ThemeContext.tsx">ThemeContext.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">40</td>
+                <td class="desc-cell">El objeto pasado como prop value al Context provider cambia en cada render. Considere usar useMemo.</td>
+                <td class="path-cell">frontend-admin/src/contexts/ThemeContext.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/lib/validators.ts">validators.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">31</td>
+                <td class="desc-cell">Prefiera `Number.parseInt` en lugar de `parseInt`.</td>
+                <td class="path-cell">frontend-admin/src/lib/validators.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/lib/validators.ts">validators.ts</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">36</td>
+                <td class="desc-cell">Prefiera `Number.parseInt` en lugar de `parseInt`.</td>
+                <td class="path-cell">frontend-admin/src/lib/validators.ts</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Auditoria.tsx">Auditoria.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">53</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Auditoria.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Dashboard.tsx">Dashboard.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">26</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Dashboard.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Dashboard.tsx">Dashboard.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">54</td>
+                <td class="desc-cell">No use índices de Array como keys</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Dashboard.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedienteDetail.tsx">ExpedienteDetail.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">178</td>
+                <td class="desc-cell">No use índices de Array como keys</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedienteDetail.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedienteDetail.tsx">ExpedienteDetail.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">212</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedienteDetail.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedienteDetail.tsx">ExpedienteDetail.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">234</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedienteDetail.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedienteDetail.tsx">ExpedienteDetail.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">282</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedienteDetail.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedienteDetail.tsx">ExpedienteDetail.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">293</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedienteDetail.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedientesList.tsx">ExpedientesList.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">139</td>
+                <td class="desc-cell">No use índices de Array como keys</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedientesList.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/ExpedientesList.tsx">ExpedientesList.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">179</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/ExpedientesList.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Reportes.tsx">Reportes.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">31</td>
+                <td class="desc-cell">Marque las props del componente como read-only.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Reportes.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Reportes.tsx">Reportes.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">131</td>
+                <td class="desc-cell">Extraiga esta operación ternaria anidada a una declaración independiente.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Reportes.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Reportes.tsx">Reportes.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">156</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Reportes.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Usuarios.tsx">Usuarios.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">56</td>
+                <td class="desc-cell">Prefiera usar una expresión optional chain, es más concisa y fácil de leer.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Usuarios.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="frontend-admin/src/pages/admin/Workflow.tsx">Workflow.tsx</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">116</td>
+                <td class="desc-cell">Extraiga esta operación ternaria anidada a una declaración independiente.</td>
+                <td class="path-cell">frontend-admin/src/pages/admin/Workflow.tsx</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="qa-dashboard/dashboard.html">dashboard.html</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-major">Major</span></td>
+                <td class="line-cell">37</td>
+                <td class="desc-cell">El texto no cumple con el contraste mínimo con su fondo.</td>
+                <td class="path-cell">qa-dashboard/dashboard.html</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="backend/clients/models.py">models.py</td>
+                <td><span class="badge badge-info">Code Smell</span></td>
+                <td><span class="badge badge-danger">Blocker</span></td>
+                <td class="line-cell">13</td>
+                <td class="desc-cell">Renombre el campo \"tipo_documento\" para evitar conflicto con \"TIPO_DOCUMENTO\" definido en línea 6.</td>
+                <td class="path-cell">backend/clients/models.py</td>
+            </tr>
+            <tr>
+                <td class="file-cell" title="qa-dashboard/dashboard.html">dashboard.html</td>
+                <td><span class="badge badge-warning">Vulnerability</span></td>
+                <td><span class="badge badge-info">Minor</span></td>
+                <td class="line-cell">7</td>
+                <td class="desc-cell">Asegúrese de que no usar integridad de recursos sea seguro aquí.</td>
+                <td class="path-cell">qa-dashboard/dashboard.html</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</div>
+
+<div class="footer">
+    Generado por SonarQube Report Script &bull; 2026-06-28 20:22:45
+</div>
+
+<script>
+const severityData = {"MINOR": 55, "MAJOR": 35, "CRITICAL": 4, "BLOCKER": 1, "INFO": 0};
+new Chart(document.getElementById('severityChart'), {
+    type: 'bar',
+    data: {
+        labels: Object.keys(severityData),
+        datasets: [{
+            label: 'Issues',
+            data: Object.values(severityData),
+            backgroundColor: ['#dc3545', '#e67e22', '#e6a817', '#17a2b8', '#6c757d'],
+            borderRadius: 4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+});
+
+const typeData = {"CODE_SMELL": 86, "VULNERABILITY": 7, "BUG": 2};
+new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(typeData),
+        datasets: [{
+            data: Object.values(typeData),
+            backgroundColor: ['#dc3545', '#e67e22', '#17a2b8'],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '55%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } } }
+    }
+});
+</script>
+
+</body>
+</html>
